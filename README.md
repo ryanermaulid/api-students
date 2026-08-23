@@ -1,7 +1,5 @@
 # API Mahasiswa (Student API) - REST API & HTTP Deep Dive
 
-Repositori ini merupakan implementasi Tugas Mandiri Modul 2 Praktikum Pemrograman Backend Lanjut.
-
 ## Kontrak API
 
 | Metode | Endpoint | Parameter | Contoh Body Permintaan | Status yang Dikembalikan | Contoh Respons |
