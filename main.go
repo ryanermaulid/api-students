@@ -32,6 +32,9 @@ func main() {
 
 	// Routing endpoint POST
 	s.Post("/", createStudent)
+	// Routing GET
+	s.Get("/", listStudents)
+	s.Get("/:id", getStudent)
 
 	log.Println("Server jalan di http://localhost:3000")
 	log.Fatal(app.Listen(":3000"))
