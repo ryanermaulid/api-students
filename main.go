@@ -35,6 +35,9 @@ func main() {
 	// Routing GET
 	s.Get("/", listStudents)
 	s.Get("/:id", getStudent)
+	s.Put("/:id", replaceStudent)
+	s.Patch("/:id", patchStudent)
+	s.Delete("/:id", deleteStudent)
 
 	log.Println("Server jalan di http://localhost:3000")
 	log.Fatal(app.Listen(":3000"))

@@ -157,3 +157,134 @@ func listStudents(c *fiber.Ctx) error {
 		TotalPages: totalPages,
 	})
 }
+
+// PUT /api/v1/students/:id (Mengganti seluruh field, semua wajib dikirim)
+func replaceStudent(c *fiber.Ctx) error {
+	id, valid := paramID(c)
+	if !valid {
+		return fail(c, fiber.StatusBadRequest, "id harus berupa angka positif")
+	}
+
+	i := findStudentIndex(id)
+	if i == -1 {
+		return fail(c, fiber.StatusNotFound, "mahasiswa tidak ditemukan")
+	}
+
+	var req ReplaceStudentRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fail(c, fiber.StatusBadRequest, "body harus berupa JSON yang valid")
+	}
+
+	req.NIM = strings.TrimSpace(req.NIM)
+	req.Name = strings.TrimSpace(req.Name)
+
+	errs := map[string]string{}
+	if req.NIM == "" {
+		errs["nim"] = "wajib diisi pada PUT"
+	}
+	if req.Name == "" {
+		errs["name"] = "wajib diisi pada PUT"
+	}
+	if req.Grade < 0 || req.Grade > 100 {
+		errs["grade"] = "wajib diisi dan bernilai antara 0-100 pada PUT"
+	}
+	if len(errs) > 0 {
+		return failValidation(c, errs) // Status 422
+	}
+
+	// Cek duplikasi NIM jika NIM diubah ke NIM milik orang lain
+	for idx, s := range students {
+		if idx != i && s.NIM == req.NIM {
+			return fail(c, fiber.StatusConflict, "NIM ganda, sudah dipakai mahasiswa lain")
+		}
+	}
+
+	students[i].NIM = req.NIM
+	students[i].Name = req.Name
+	students[i].Grade = req.Grade
+	students[i].IsActive = req.IsActive
+
+	return ok(c, "data mahasiswa berhasil diganti seluruhnya", students[i])
+}
+
+// PATCH /api/v1/students/:id (Mengubah sebagian field yang dikirim saja)
+func patchStudent(c *fiber.Ctx) error {
+	id, valid := paramID(c)
+	if !valid {
+		return fail(c, fiber.StatusBadRequest, "id harus berupa angka positif")
+	}
+
+	i := findStudentIndex(id)
+	if i == -1 {
+		return fail(c, fiber.StatusNotFound, "mahasiswa tidak ditemukan")
+	}
+
+	var req PatchStudentRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fail(c, fiber.StatusBadRequest, "body harus berupa JSON yang valid")
+	}
+
+	if req.NIM == nil && req.Name == nil && req.Grade == nil && req.IsActive == nil {
+		return fail(c, fiber.StatusBadRequest, "tidak ada field yang diubah")
+	}
+
+	errs := map[string]string{}
+	if req.NIM != nil {
+		trimmedNIM := strings.TrimSpace(*req.NIM)
+		if trimmedNIM == "" {
+			errs["nim"] = "NIM tidak boleh kosong"
+		} else {
+			for idx, s := range students {
+				if idx != i && s.NIM == trimmedNIM {
+					errs["nim"] = "NIM ganda, sudah dipakai"
+				}
+			}
+		}
+		if len(errs) == 0 {
+			students[i].NIM = trimmedNIM
+		}
+	}
+
+	if req.Name != nil {
+		trimmedName := strings.TrimSpace(*req.Name)
+		if trimmedName == "" {
+			errs["name"] = "nama tidak boleh kosong"
+		} else {
+			students[i].Name = trimmedName
+		}
+	}
+
+	if req.Grade != nil {
+		if *req.Grade < 0 || *req.Grade > 100 {
+			errs["grade"] = "nilai harus antara 0-100"
+		} else {
+			students[i].Grade = *req.Grade
+		}
+	}
+
+	if len(errs) > 0 {
+		return failValidation(c, errs)
+	}
+
+	if req.IsActive != nil {
+		students[i].IsActive = *req.IsActive
+	}
+
+	return ok(c, "data mahasiswa berhasil diperbarui sebagian", students[i])
+}
+
+// DELETE /api/v1/students/:id (Menghapus data)
+func deleteStudent(c *fiber.Ctx) error {
+	id, valid := paramID(c)
+	if !valid {
+		return fail(c, fiber.StatusBadRequest, "id harus berupa angka positif")
+	}
+
+	i := findStudentIndex(id)
+	if i == -1 {
+		return fail(c, fiber.StatusNotFound, "mahasiswa tidak ditemukan")
+	}
+
+	students = append(students[:i], students[i+1:]...)
+	return noContent(c) // Status 204 No Content
+}
