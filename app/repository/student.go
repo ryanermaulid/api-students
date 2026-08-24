@@ -17,7 +17,6 @@ var (
 	ErrDuplicate = errors.New("NIM sudah terdaftar")
 )
 
-// StudentRepository adalah kontrak penyimpanan data mahasiswa
 type StudentRepository interface {
 	FindAll(ctx context.Context, q model.ListQuery) ([]model.Student, int, error)
 	FindByID(ctx context.Context, id int) (model.Student, error)

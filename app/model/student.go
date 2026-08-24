@@ -20,7 +20,7 @@ type CreateStudentRequest struct {
 	IsActive *bool   `json:"is_active"`
 }
 
-// ReplaceStudentRequest untuk validasi request PUT (mengganti seluruh isi)
+// ReplaceStudentRequest untuk validasi request PUT 
 type ReplaceStudentRequest struct {
 	NIM      string  `json:"nim"`
 	Name     string  `json:"name"`
