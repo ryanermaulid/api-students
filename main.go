@@ -2,62 +2,54 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/logger"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
-
 	"api-students/app/repository"
+	"api-students/app/service"
 	"api-students/config"
 	"api-students/database"
 )
 
 func main() {
-	// 1. Memuat konfigurasi .env
 	config.LoadEnv()
+	logger := config.NewLogger()
 
-	// 2. Membuka Connection Pool ke PostgreSQL
 	pool, err := database.NewPool(context.Background())
 	if err != nil {
-		log.Fatalf("database: %v", err)
+		logger.Error("gagal terhubung ke database", slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 	defer pool.Close()
 
-	// 3. Dependency Injection: Pool -> Repository -> Handler
-	studentRepository := repository.NewStudentRepository(pool)
-	studentHandler := NewStudentHandler(studentRepository)
+	studentRepo := repository.NewStudentRepository(pool)
+	studentService := service.NewStudentService(studentRepo)
 
-	// 4. Inisialisasi Fiber
-	app := fiber.New()
-	app.Use(requestid.New())
-	app.Use(logger.New())
-	app.Use(cors.New())
-
-	api := app.Group("/api/v1")
-
-	// Endpoint Healthcheck (memeriksa server & database)
-	api.Get("/health", func(c *fiber.Ctx) error {
-		ctx, cancel := context.WithTimeout(c.UserContext(), 2*time.Second)
-		defer cancel()
-
-		if err := pool.Ping(ctx); err != nil {
-			return fail(c, fiber.StatusServiceUnavailable, "database tidak dapat dihubungi")
-		}
-		return ok(c, "server dan database berjalan", nil)
-	})
-
-	// Routing Endpoint Mahasiswa
-	s := api.Group("/students")
-	s.Get("/", studentHandler.List)
-	s.Get("/:id", studentHandler.Get)
-	s.Post("/", studentHandler.Create)
-	s.Put("/:id", studentHandler.Replace)
-	s.Patch("/:id", studentHandler.Patch)
-	s.Delete("/:id", studentHandler.Delete)
-
+	app := config.NewApp(logger, pool, studentService)
 	port := config.GetEnv("APP_PORT", "3000")
-	log.Fatal(app.Listen(":" + port))
+
+	go func() {
+		if err := app.Listen(":" + port); err != nil {
+			logger.Error("server berhenti", slog.String("error", err.Error()))
+			os.Exit(1)
+		}
+	}()
+	logger.Info("server berjalan", slog.String("port", port))
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logger.Info("sinyal berhenti diterima, menutup server")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := app.ShutdownWithContext(ctx); err != nil {
+		logger.Error("gagal menutup server dengan rapi", slog.String("error", err.Error()))
+	}
+	logger.Info("server berhenti dengan rapi")
 }
