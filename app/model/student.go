@@ -5,12 +5,14 @@ import "time"
 // Student merepresentasikan entitas mahasiswa pada tabel database
 type Student struct {
 	ID        int       `json:"id"`
-	NIM       string    `json:"nim"`
+	NIM       string    `json:"nim"` 
 	Name      string    `json:"name"`
 	Grade     float64   `json:"grade"`
 	IsActive  bool      `json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`
-	Role	  string    `json:"role"`
+	Role      string    `json:"role"`
+	Email     string    `json:"email"` 
+	Password  string    `json:"-"`     
 }
 
 // CreateStudentRequest untuk validasi request POST
@@ -20,6 +22,8 @@ type CreateStudentRequest struct {
 	Grade    float64 `json:"grade"`
 	IsActive *bool   `json:"is_active"`
 	Role	  *string `json:"role"`
+	Email    string  `json:"email"`
+	Password string  `json:"password"`
 }
 
 // ReplaceStudentRequest untuk validasi request PUT 
@@ -29,6 +33,8 @@ type ReplaceStudentRequest struct {
 	Grade    float64 `json:"grade"`
 	IsActive bool    `json:"is_active"`
 	Role	  *string `json:"role"`
+	Email    string  `json:"email"`
+	Password string  `json:"password"`
 }
 
 // PatchStudentRequest untuk validasi request PATCH (mengubah sebagian)
@@ -38,6 +44,8 @@ type PatchStudentRequest struct {
 	Grade    *float64 `json:"grade"`
 	IsActive *bool    `json:"is_active"`
 	Role	  *string `json:"role"`
+	Email    string  `json:"email"`
+	Password string  `json:"password"`
 }
 
 // ListQuery menampung parameter query URL

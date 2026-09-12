@@ -20,6 +20,7 @@ var (
 type StudentRepository interface {
 	FindAll(ctx context.Context, q model.ListQuery) ([]model.Student, int, error)
 	FindByID(ctx context.Context, id int) (model.Student, error)
+	FindByUsername(ctx context.Context, username string) (model.Student, error)
 	Create(ctx context.Context, s model.Student) (model.Student, error)
 	Update(ctx context.Context, s model.Student) (model.Student, error)
 	Delete(ctx context.Context, id int) error
@@ -97,7 +98,7 @@ func (r *studentPostgresRepository) FindAll(ctx context.Context, q model.ListQue
 	hasil := []model.Student{}
 	for rows.Next() {
 		var s model.Student
-		if err := rows.Scan(&s.ID, &s.NIM, &s.Name, &s.Grade, &s.IsActive, &s.CreatedAt); err != nil {
+		if err := rows.Scan(&s.ID, &s.NIM, &s.Name, &s.Grade, &s.IsActive, &s.CreatedAt, &s.Role, &s.Email, &s.Password); err != nil {
 			return nil, 0, fmt.Errorf("membaca baris student: %w", err)
 		}
 		hasil = append(hasil, s)
@@ -110,11 +111,52 @@ func (r *studentPostgresRepository) FindAll(ctx context.Context, q model.ListQue
 	return hasil, total, nil
 }
 
+func (r *studentPostgresRepository) FindByUsername(ctx context.Context, username string) (model.Student, error) {
+	var s model.Student
+	query := `
+		SELECT id, nim, name, grade, email, password, role, is_active, created_at 
+		FROM students 
+		WHERE LOWER(name) = LOWER($1)
+	`
+	err := r.pool.QueryRow(ctx, query, username).Scan(
+		&s.ID,
+		&s.NIM,
+		&s.Name,
+		&s.Grade,
+		&s.Email,
+		&s.Password,
+		&s.Role,
+		&s.IsActive,
+		&s.CreatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Student{}, ErrNotFound
+		}
+		return model.Student{}, fmt.Errorf("mengambil student: %w", err)
+	}
+	return s, nil
+}
+
 func (r *studentPostgresRepository) FindByID(ctx context.Context, id int) (model.Student, error) {
 	var s model.Student
-	err := r.pool.QueryRow(ctx,
-		"SELECT id, nim, name, grade, is_active, created_at FROM students WHERE id = $1", id,
-	).Scan(&s.ID, &s.NIM, &s.Name, &s.Grade, &s.IsActive, &s.CreatedAt)
+	query := `
+		SELECT id, nim, name, grade, email, password, role, is_active, created_at 
+		FROM students 
+		WHERE id = $1
+	`
+	err := r.pool.QueryRow(ctx, query, id).Scan(
+		&s.ID,
+		&s.NIM,
+		&s.Name,
+		&s.Grade,
+		&s.Email,
+		&s.Password,
+		&s.Role,
+		&s.IsActive,
+		&s.CreatedAt,
+	)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -177,3 +219,4 @@ func isUniqueViolation(err error) bool {
 	}
 	return false
 }
+
