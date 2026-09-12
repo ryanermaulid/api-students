@@ -12,7 +12,7 @@ import (
 )
 
 // Register memetakan URL ke method pada service.
-func Register(app *fiber.App, pool *pgxpool.Pool, studentService *service.StudentService) {
+func Register(app *fiber.App, pool *pgxpool.Pool, studentService *service.StudentService, prestasiService *service.PrestasiService) {
 	api := app.Group("/api/v1")
 	api.Get("/health", healthCheck(pool))
 
@@ -23,6 +23,8 @@ func Register(app *fiber.App, pool *pgxpool.Pool, studentService *service.Studen
 	students.Put("/:id", studentService.Replace)
 	students.Patch("/:id", studentService.Patch)
 	students.Delete("/:id", studentService.Delete)
+	students.Get("/:id/prestasi", prestasiService.ListByStudent)
+	students.Post("/:id/prestasi", prestasiService.Create)
 }
 
 func healthCheck(pool *pgxpool.Pool) fiber.Handler {

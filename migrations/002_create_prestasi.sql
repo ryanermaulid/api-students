@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS prestasi (
+    id_prestasi SERIAL PRIMARY KEY,
+    student_id INT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    nama_prestasi VARCHAR (100) NOT NULL,
+    juara VARCHAR (50) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
