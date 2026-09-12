@@ -10,6 +10,7 @@ type Student struct {
 	Grade     float64   `json:"grade"`
 	IsActive  bool      `json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`
+	Role	  string    `json:"role"`
 }
 
 // CreateStudentRequest untuk validasi request POST
@@ -18,6 +19,7 @@ type CreateStudentRequest struct {
 	Name     string  `json:"name"`
 	Grade    float64 `json:"grade"`
 	IsActive *bool   `json:"is_active"`
+	Role	  *string `json:"role"`
 }
 
 // ReplaceStudentRequest untuk validasi request PUT 
@@ -26,6 +28,7 @@ type ReplaceStudentRequest struct {
 	Name     string  `json:"name"`
 	Grade    float64 `json:"grade"`
 	IsActive bool    `json:"is_active"`
+	Role	  *string `json:"role"`
 }
 
 // PatchStudentRequest untuk validasi request PATCH (mengubah sebagian)
@@ -34,6 +37,7 @@ type PatchStudentRequest struct {
 	Name     *string  `json:"name"`
 	Grade    *float64 `json:"grade"`
 	IsActive *bool    `json:"is_active"`
+	Role	  *string `json:"role"`
 }
 
 // ListQuery menampung parameter query URL
