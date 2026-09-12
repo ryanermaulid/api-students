@@ -10,16 +10,23 @@ const minPasswordLength = 8
 
 func ValidateRegister(req model.RegisterRequest) map[string]string {
 	errs := make(map[string]string)
-	username := strings.TrimSpace(req.Username)
+	name := strings.TrimSpace(req.Name)
 
 	switch {
-	case username == "":
-		errs["username"] = "wajib diisi"
-	case len(username) < 3:
-		errs["username"] = "minimal 3 karakter"
-	case !isValidUsername(username):
-		errs["username"] = "hanya boleh huruf, angka, titik, dan garis bawah"
+	case name == "":
+		errs["name"] = "wajib diisi"
+	case len(name) < 3:
+		errs["name"] = "minimal 3 karakter"
+	case !isValidName(name):
+		errs["name"] = "hanya boleh huruf, angka, titik, dan garis bawah"
 	}
+
+	nim := strings.TrimSpace(req.NIM)
+    if nim == "" {
+        errs["nim"] = "wajib diisi"
+    } else if len(nim) < 3 {
+        errs["nim"] = "minimal 3 karakter"
+    }
 
 	// Anggap lu punya fungsi isValidEmail dari tugas sebelumnya, kalau nggak ada hapus blok if ini
 	if !strings.Contains(req.Email, "@") {
@@ -35,8 +42,8 @@ func ValidateRegister(req model.RegisterRequest) map[string]string {
 
 func ValidateLogin(req model.LoginRequest) map[string]string {
 	errs := make(map[string]string)
-	if strings.TrimSpace(req.Username) == "" {
-		errs["username"] = "wajib diisi"
+	if strings.TrimSpace(req.Name) == "" {
+		errs["name"] = "wajib diisi"
 	}
 	if req.Password == "" {
 		errs["password"] = "wajib diisi"
@@ -74,8 +81,8 @@ func checkPasswordStrength(password string) string {
 	return ""
 }
 
-func isValidUsername(username string) bool {
-	for _, r := range username {
+func isValidName(name string) bool {
+	for _, r := range name {
 		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '.' && r != '_' {
 			return false
 		}

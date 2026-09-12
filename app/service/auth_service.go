@@ -2,35 +2,37 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
+
 	"github.com/gofiber/fiber/v2"
-	
-	"api-students/app/model"      
-	"api-students/app/repository" 
-	"api-students/helper"         
+
+	"api-students/app/model"
+	"api-students/app/repository"
+	"api-students/helper"
 )
 
 const refreshTokenBytes = 32
 
 type AuthService struct {
-	students   repository.StudentRepository 
-	tokens     *repository.TokenRepository   
+	students   repository.StudentRepository
+	tokens     *repository.TokenRepository
 	jwt        *helper.JWTManager
 	refreshTTL time.Duration
 }
 
 func NewAuthService(students repository.StudentRepository, tokens *repository.TokenRepository, jwtManager *helper.JWTManager, refreshTTL time.Duration) *AuthService {
 	return &AuthService{
-		students: students, 
-		tokens:   tokens, 
-		jwt:      jwtManager, 
+		students:   students,
+		tokens:     tokens,
+		jwt:        jwtManager,
 		refreshTTL: refreshTTL,
 	}
 }
 
 func (s *AuthService) Register(c *fiber.Ctx) error {
-	ctx, cancel := helper.ReqCtx(c) 
+	ctx, cancel := helper.ReqCtx(c)
 	defer cancel()
 
 	var req model.RegisterRequest
@@ -38,8 +40,9 @@ func (s *AuthService) Register(c *fiber.Ctx) error {
 		return helper.Fail(c, fiber.StatusBadRequest, "body harus berupa JSON")
 	}
 
-	req.Username = strings.TrimSpace(req.Username)
+	req.Name = strings.TrimSpace(req.Name)
 	req.Email = strings.TrimSpace(req.Email)
+	req.NIM = strings.TrimSpace(req.NIM)
 
 	if errs := ValidateRegister(req); len(errs) > 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "fail", "errors": errs})
@@ -51,16 +54,18 @@ func (s *AuthService) Register(c *fiber.Ctx) error {
 		return helper.Fail(c, fiber.StatusInternalServerError, "gagal memproses password")
 	}
 
-	// Buat object mahasiswa baru (Sesuaikan field dengan struct Student lu)
+	// Buat object mahasiswa baru
 	newStudent := model.Student{
-		Name:     req.Username, 
+		Name:     req.Name,
+		NIM:      req.NIM,
 		Email:    req.Email,
 		Password: hashed,
-		Role:     "user", 
+		Role:     "user",
 	}
 
-_, err = s.students.Create(ctx, newStudent)
+	_, err = s.students.Create(ctx, newStudent)
 	if err != nil {
+		fmt.Println(">>> FATAL DB ERROR:", err)
 		return helper.Fail(c, fiber.StatusInternalServerError, "gagal mendaftarkan mahasiswa")
 	}
 
@@ -80,16 +85,15 @@ func (s *AuthService) Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "fail", "errors": errs})
 	}
 
-	// Cari user, sesuaikan method ini di repo lu!
-	user, err := s.students.FindByUsername(ctx, strings.TrimSpace(req.Username))
+	// Cari user berdasarkan name
+	user, err := s.students.FindByName(ctx, strings.TrimSpace(req.Name))
 	if err != nil {
-		// Tetap jalankan hash palsu agar waktu tanggap mirip[cite: 3]
 		helper.VerifyDummyPassword(req.Password)
-		return helper.Fail(c, fiber.StatusUnauthorized, "username atau password salah")
+		return helper.Fail(c, fiber.StatusUnauthorized, "name atau password salah")
 	}
 
 	if !helper.VerifyPassword(user.Password, req.Password) {
-		return helper.Fail(c, fiber.StatusUnauthorized, "username atau password salah")
+		return helper.Fail(c, fiber.StatusUnauthorized, "name atau password salah")
 	}
 
 	pair, err := s.issueTokenPair(ctx, user)
@@ -161,7 +165,7 @@ func (s *AuthService) Me(c *fiber.Ctx) error {
 		return helper.Fail(c, fiber.StatusUnauthorized, "belum terautentikasi")
 	}
 
-	user, err := s.students.FindByID(ctx, authUser.UserID) 
+	user, err := s.students.FindByID(ctx, authUser.UserID)
 	if err != nil {
 		return helper.Fail(c, fiber.StatusUnauthorized, "user tidak ditemukan")
 	}

@@ -5,10 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	"api-students/app/model"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"api-students/app/model"
 )
 
 // Sentinel error milik lapisan repository
@@ -20,7 +21,7 @@ var (
 type StudentRepository interface {
 	FindAll(ctx context.Context, q model.ListQuery) ([]model.Student, int, error)
 	FindByID(ctx context.Context, id int) (model.Student, error)
-	FindByUsername(ctx context.Context, username string) (model.Student, error)
+	FindByName(ctx context.Context, name string) (model.Student, error)
 	Create(ctx context.Context, s model.Student) (model.Student, error)
 	Update(ctx context.Context, s model.Student) (model.Student, error)
 	Delete(ctx context.Context, id int) error
@@ -84,7 +85,7 @@ func (r *studentPostgresRepository) FindAll(ctx context.Context, q model.ListQue
 	}
 
 	sqlText := fmt.Sprintf(
-		"SELECT id, nim, name, grade, is_active, created_at FROM students%s ORDER BY %s %s LIMIT $%d OFFSET $%d",
+		"SELECT id, nim, name, grade, is_active, created_at, email, password, role FROM students%s ORDER BY %s %s LIMIT $%d OFFSET $%d",
 		where, sortCol, arah, len(args)+1, len(args)+2,
 	)
 	args = append(args, q.Limit, q.Offset())
@@ -93,12 +94,12 @@ func (r *studentPostgresRepository) FindAll(ctx context.Context, q model.ListQue
 	if err != nil {
 		return nil, 0, fmt.Errorf("mengambil daftar student: %w", err)
 	}
-	defer rows.Close() // Wajib ditutup agar koneksi kembali ke pool
+	defer rows.Close() 
 
 	hasil := []model.Student{}
 	for rows.Next() {
 		var s model.Student
-		if err := rows.Scan(&s.ID, &s.NIM, &s.Name, &s.Grade, &s.IsActive, &s.CreatedAt, &s.Role, &s.Email, &s.Password); err != nil {
+		if err := rows.Scan(&s.ID, &s.NIM, &s.Name, &s.Grade, &s.IsActive, &s.CreatedAt, &s.Email, &s.Password, &s.Role); err != nil {
 			return nil, 0, fmt.Errorf("membaca baris student: %w", err)
 		}
 		hasil = append(hasil, s)
@@ -109,34 +110,6 @@ func (r *studentPostgresRepository) FindAll(ctx context.Context, q model.ListQue
 	}
 
 	return hasil, total, nil
-}
-
-func (r *studentPostgresRepository) FindByUsername(ctx context.Context, username string) (model.Student, error) {
-	var s model.Student
-	query := `
-		SELECT id, nim, name, grade, email, password, role, is_active, created_at 
-		FROM students 
-		WHERE LOWER(name) = LOWER($1)
-	`
-	err := r.pool.QueryRow(ctx, query, username).Scan(
-		&s.ID,
-		&s.NIM,
-		&s.Name,
-		&s.Grade,
-		&s.Email,
-		&s.Password,
-		&s.Role,
-		&s.IsActive,
-		&s.CreatedAt,
-	)
-
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return model.Student{}, ErrNotFound
-		}
-		return model.Student{}, fmt.Errorf("mengambil student: %w", err)
-	}
-	return s, nil
 }
 
 func (r *studentPostgresRepository) FindByID(ctx context.Context, id int) (model.Student, error) {
@@ -167,19 +140,47 @@ func (r *studentPostgresRepository) FindByID(ctx context.Context, id int) (model
 	return s, nil
 }
 
-func (r *studentPostgresRepository) Create(ctx context.Context, s model.Student) (model.Student, error) {
-	err := r.pool.QueryRow(ctx,
-		"INSERT INTO students (nim, name, grade, is_active) VALUES ($1, $2, $3, $4) RETURNING id, created_at",
-		s.NIM, s.Name, s.Grade, s.IsActive,
-	).Scan(&s.ID, &s.CreatedAt)
+func (r *studentPostgresRepository) FindByName(ctx context.Context, name string) (model.Student, error) {
+	var s model.Student
+	query := `
+		SELECT id, nim, name, grade, email, password, role, is_active, created_at 
+		FROM students 
+		WHERE LOWER(name) = LOWER($1)
+	`
+	err := r.pool.QueryRow(ctx, query, name).Scan(
+		&s.ID,
+		&s.NIM,
+		&s.Name,
+		&s.Grade,
+		&s.Email,
+		&s.Password,
+		&s.Role,
+		&s.IsActive,
+		&s.CreatedAt,
+	)
 
 	if err != nil {
-		if isUniqueViolation(err) {
-			return model.Student{}, ErrDuplicate
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Student{}, ErrNotFound
 		}
-		return model.Student{}, fmt.Errorf("menyimpan student: %w", err)
+		return model.Student{}, fmt.Errorf("mengambil student: %w", err)
 	}
 	return s, nil
+}
+
+func (r *studentPostgresRepository) Create(ctx context.Context, s model.Student) (model.Student, error) {
+    err := r.pool.QueryRow(ctx,
+        "INSERT INTO students (nim, name, grade, is_active, email, password, role) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, created_at",
+        s.NIM, s.Name, s.Grade, s.IsActive, s.Email, s.Password, s.Role,
+    ).Scan(&s.ID, &s.CreatedAt)
+
+    if err != nil {
+        if isUniqueViolation(err) {
+            return model.Student{}, ErrDuplicate
+        }
+        return model.Student{}, fmt.Errorf("menyimpan student: %w", err)
+    }
+    return s, nil
 }
 
 func (r *studentPostgresRepository) Update(ctx context.Context, s model.Student) (model.Student, error) {

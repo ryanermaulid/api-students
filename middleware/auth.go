@@ -10,7 +10,7 @@ import (
 	"api-students/helper" 
 )
 
-// RequireAuth memeriksa access token pada header Authorization[cite: 3]
+// RequireAuth memeriksa access token pada header Authorization
 func RequireAuth(jwtManager *helper.JWTManager) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		token, err := bearerToken(c)
@@ -22,7 +22,6 @@ func RequireAuth(jwtManager *helper.JWTManager) fiber.Handler {
 		authUser, err := jwtManager.Parse(token)
 		if err != nil {
 			c.Set("WWW-Authenticate", `Bearer realm="api"`)
-			// Membedakan "kedaluwarsa" dan "tidak valid" itu wajib demi keamanan dan fungsionalitas refresh token[cite: 3]
 			if errors.Is(err, helper.ErrExpiredToken) {
 				return helper.Fail(c, fiber.StatusUnauthorized, "access token kedaluwarsa")
 			}

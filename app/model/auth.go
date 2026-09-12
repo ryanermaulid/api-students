@@ -3,13 +3,14 @@ package model
 import "time"
 
 type RegisterRequest struct {
-	Username string `json:"username"`
+	Name	 string `json:"name"`
+	NIM	     string `json:"nim"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 type LoginRequest struct {
-	Username string `json:"username"`
+	Name     string `json:"name"`
 	Password string `json:"password"`
 }
 
