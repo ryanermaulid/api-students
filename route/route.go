@@ -11,20 +11,38 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Register memetakan URL ke method pada service.
-func Register(app *fiber.App, pool *pgxpool.Pool, studentService *service.StudentService, prestasiService *service.PrestasiService) {
-	api := app.Group("/api/v1")
-	api.Get("/health", healthCheck(pool))
+type Dependencies struct {
+	Pool            *pgxpool.Pool
+	JWT             *helper.JWTManager 
+	StudentService  *service.StudentService
+	PrestasiService *service.PrestasiService
+	AuthService     *service.AuthService 
+}
 
-	students := api.Group("/students", middleware.RequireJSON)
-	students.Get("/", studentService.List)
-	students.Get("/:id", studentService.Get)
-	students.Post("/", studentService.Create)
-	students.Put("/:id", studentService.Replace)
-	students.Patch("/:id", studentService.Patch)
-	students.Delete("/:id", studentService.Delete)
-	students.Get("/:id/prestasi", prestasiService.ListByStudent)
-	students.Post("/:id/prestasi", prestasiService.Create)
+// Register memetakan URL ke method pada service.
+func Register(app *fiber.App, deps Dependencies) {
+	api := app.Group("/api/v1")
+	api.Get("/health", healthCheck(deps.Pool)) // Pake deps.Pool
+
+	// --- AUTH ROUTES (Publik) ---
+	auth := api.Group("/auth", middleware.RequireJSON) 
+	auth.Post("/register", deps.AuthService.Register)
+	auth.Post("/login", middleware.LoginRateLimiter(), deps.AuthService.Login) 
+	auth.Post("/refresh", deps.AuthService.Refresh)
+	auth.Post("/logout", deps.AuthService.Logout)
+	auth.Get("/me", middleware.RequireAuth(deps.JWT), deps.AuthService.Me)
+
+	// --- PROTECTED ROUTES (Terkunci) ---
+	students := api.Group("/students", middleware.RequireJSON, middleware.RequireAuth(deps.JWT))
+	
+	students.Get("/", deps.StudentService.List)
+	students.Get("/:id", deps.StudentService.Get)
+	students.Post("/", deps.StudentService.Create)
+	students.Put("/:id", deps.StudentService.Replace)
+	students.Patch("/:id", deps.StudentService.Patch)
+	students.Delete("/:id", deps.StudentService.Delete)
+	students.Get("/:id/prestasi", deps.PrestasiService.ListByStudent)
+	students.Post("/:id/prestasi", deps.PrestasiService.Create)
 }
 
 func healthCheck(pool *pgxpool.Pool) fiber.Handler {

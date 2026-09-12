@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
-	"strconv"
 	"strings"
 	"time"
 	"github.com/gofiber/fiber/v2"
@@ -17,12 +15,12 @@ const refreshTokenBytes = 32
 
 type AuthService struct {
 	students   repository.StudentRepository 
-	tokens     repository.TokenRepository   
+	tokens     *repository.TokenRepository   
 	jwt        *helper.JWTManager
 	refreshTTL time.Duration
 }
 
-func NewAuthService(students repository.StudentRepository, tokens repository.TokenRepository, jwtManager *helper.JWTManager, refreshTTL time.Duration) *AuthService {
+func NewAuthService(students repository.StudentRepository, tokens *repository.TokenRepository, jwtManager *helper.JWTManager, refreshTTL time.Duration) *AuthService {
 	return &AuthService{
 		students: students, 
 		tokens:   tokens, 
@@ -32,7 +30,7 @@ func NewAuthService(students repository.StudentRepository, tokens repository.Tok
 }
 
 func (s *AuthService) Register(c *fiber.Ctx) error {
-	ctx, cancel := helper.ReqCtx(c) // Asumsi lu pake ReqCtx dari Modul 4
+	ctx, cancel := helper.ReqCtx(c) 
 	defer cancel()
 
 	var req model.RegisterRequest
@@ -55,10 +53,10 @@ func (s *AuthService) Register(c *fiber.Ctx) error {
 
 	// Buat object mahasiswa baru (Sesuaikan field dengan struct Student lu)
 	newStudent := model.Student{
-		Name:     req.Username, // Atau map ke field yang sesuai
+		Name:     req.Username, 
 		Email:    req.Email,
 		Password: hashed,
-		Role:     "user", // Role ditentukan server, bukan dari request[cite: 3]
+		Role:     "user", 
 	}
 
 _, err = s.students.Create(ctx, newStudent)

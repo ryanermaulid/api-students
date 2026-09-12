@@ -11,15 +11,21 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewApp(logger *slog.Logger, pool *pgxpool.Pool, studentService *service.StudentService, prestasiService *service.PrestasiService) *fiber.App {
+func NewApp(logger *slog.Logger, pool *pgxpool.Pool, jwt *helper.JWTManager, studentService *service.StudentService, prestasiService *service.PrestasiService, authService *service.AuthService) *fiber.App {
 	app := fiber.New(fiber.Config{
 		AppName:      GetEnv("APP_NAME", "Praktikum Backend Lanjut"),
 		ErrorHandler: newErrorHandler(logger),
 	})
 
 	middleware.Register(app, logger)
-	route.Register(app, pool, studentService, prestasiService)
-
+	route.Register(app, route.Dependencies{
+		Pool:            pool,
+		JWT:             jwt,
+		StudentService:  studentService,
+		PrestasiService: prestasiService,
+		AuthService:     authService,
+	})
+	
 	app.Use(func(c *fiber.Ctx) error {
 		return helper.Fail(c, fiber.StatusNotFound, "endpoint tidak ditemukan")
 	})
